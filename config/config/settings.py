@@ -37,6 +37,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    'rest_framework',
+
+    'exchange',
 ]
 
 MIDDLEWARE = [
@@ -121,3 +125,18 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+
+# ########### #
+# My Settings #
+# ########### #
+
+DECIMAL_FIELDS_ATTRIBUTES = {
+  'limit_price': {'max_digits': 7, 'decimal_places': 2},
+  'limit_total_volume': {'max_digits': 17, 'decimal_places': 4},
+  'order_price': {'max_digits': 7, 'decimal_places': 2},
+  'order_size': {'max_digits': 7, 'decimal_places': 4},
+  'match_price': {'max_digits': 7, 'decimal_places': 2},
+  'match_size_filled': {'max_digits': 7, 'decimal_places': 4},
+}
