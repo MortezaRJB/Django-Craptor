@@ -1,14 +1,20 @@
 from rest_framework import serializers
 from rest_framework import status
+from django.db.models import UUIDField
 from . import models
 from . import services
+from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext_lazy as _
 
 
 class OrderSerializer(serializers.ModelSerializer):
+  orderbook = serializers.PrimaryKeyRelatedField(
+    queryset=models.OrderBook.objects.all()
+  )
+
   class Meta:
     model = models.Order
-    fields = ['id', 'size', 'is_Bid', 'price', 'is_limit', 'timestamp']
+    fields = ['id', 'orderbook', 'size', 'is_Bid', 'price', 'is_limit', 'timestamp']
     read_only_fields = ['timestamp']
   
   def validate(self, attrs):
@@ -19,10 +25,20 @@ class OrderSerializer(serializers.ModelSerializer):
     return super().validate(attrs)
   
   def create(self, validated_data):
-    validated_data['size_remained'] = validated_data.get('size')
-    validated_data['status'] = models.Order.OrderStatusChoices.PROCESSING
-    order = super().create(validated_data)
-    orderbook = models.OrderBook.objects.first()
+    # order = super().create(validated_data)
+    orderbook = validated_data.get('orderbook', None)
+    if orderbook is None:
+      raise serializers.ValidationError({"orderbook": _("Orderbook is required!")})
+    order = models.Order.objects.create(
+      orderbook=orderbook,
+      size=validated_data.get('size'),
+      is_Bid=validated_data.get('is_Bid'),
+      price=validated_data.get('price'),
+      is_limit=validated_data.get('is_limit'),
+      size_remained=validated_data.get('size'),
+      status=models.Order.OrderStatusChoices.PROCESSING
+    )
+    orderbook = order.orderbook
     placing_response = services.place_order(order, orderbook)
     if placing_response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY:
       order.status = models.Order.OrderStatusChoices.REJECTED
@@ -30,4 +46,9 @@ class OrderSerializer(serializers.ModelSerializer):
       raise serializers.ValidationError(status.HTTP_422_UNPROCESSABLE_ENTITY, 'The Order Size Exceeds The Limit!')
     return order
 
+
+class OrderBookSerializer(serializers.ModelSerializer):
+  class Meta:
+    model = models.OrderBook
+    fields = ['id', 'currency_1', 'currency_2']
 

@@ -8,22 +8,25 @@ from rest_framework import status
 class TestOrderViews(TestCase):
   def setUp(self) -> None:
     self.client = Client()
-    self.ob = models.OrderBook.objects.create()
+    self.ob = models.OrderBook.objects.create(currency_1='ETH', currency_2='USD')
   
   def test_limit_order_create_view(self):
     buy_limit_order = self.client.post(reverse('create-order'), {
+      'orderbook': self.ob.id,
       'size': Decimal('10'),
       'is_Bid': True,
       'price': Decimal('10000'),
       'is_limit': True,
     })
     sell_limit_order_1 = self.client.post(reverse('create-order'), {
+      'orderbook': self.ob.id,
       'size': Decimal('5'),
       'is_Bid': False,
       'price': Decimal('8500'),
       'is_limit': True,
     })
     sell_limit_order_2 = self.client.post(reverse('create-order'), {
+      'orderbook': self.ob.id,
       'size': Decimal('3'),
       'is_Bid': False,
       'price': Decimal('8500'),
@@ -42,6 +45,7 @@ class TestOrderViews(TestCase):
   
   def test_singlefill_market_order_create_view(self):
     sell_limit_order = self.client.post(reverse('create-order'), {
+      'orderbook': self.ob.id,
       'size': Decimal('10'),
       'is_Bid': False,
       'price': Decimal('10000'),
@@ -54,6 +58,7 @@ class TestOrderViews(TestCase):
     self.assertEqual(limits[0].total_volume, Decimal('10'))
 
     response = self.client.post(reverse('create-order'), {
+      'orderbook': self.ob.id,
       'size': Decimal('7'),
       'is_Bid': True,
       'is_limit': False,
@@ -71,18 +76,21 @@ class TestOrderViews(TestCase):
   
   def test_multifill_market_order_create_view(self):
     buy_limit_order_1 = self.client.post(reverse('create-order'), {
+      'orderbook': self.ob.id,
       'size': Decimal('4'),
       'is_Bid': True,
       'price': Decimal('9000'),
       'is_limit': True,
     })
     buy_limit_order_2 = self.client.post(reverse('create-order'), {
+      'orderbook': self.ob.id,
       'size': Decimal('5'),
       'is_Bid': True,
       'price': Decimal('7000'),
       'is_limit': True,
     })
     buy_limit_order_3 = self.client.post(reverse('create-order'), {
+      'orderbook': self.ob.id,
       'size': Decimal('15'),
       'is_Bid': True,
       'price': Decimal('10000'),
@@ -99,6 +107,7 @@ class TestOrderViews(TestCase):
     self.assertEqual(limits_total_vol, Decimal('24'))
 
     response = self.client.post(reverse('create-order'), {
+      'orderbook': self.ob.id,
       'size': Decimal('20.9'),
       'is_Bid': False,
       'is_limit': False,
@@ -118,6 +127,7 @@ class TestOrderViews(TestCase):
   def test_cancel_order(self):
     # NOT FILLED LIMIT CANCEL
     buy_limit_order_1 = self.client.post(reverse('create-order'), {
+      'orderbook': self.ob.id,
       'size': Decimal('10'),
       'is_Bid': True,
       'price': Decimal('10000'),
@@ -132,12 +142,14 @@ class TestOrderViews(TestCase):
 
     # PARTIALLY FILLED LIMIT CANCEL
     sell_limit_order_1 = self.client.post(reverse('create-order'), {
+      'orderbook': self.ob.id,
       'size': Decimal('10'),
       'is_Bid': False,
       'price': Decimal('10000'),
       'is_limit': True,
     })
     buy_market_order_2 = self.client.post(reverse('create-order'), {
+      'orderbook': self.ob.id,
       'size': Decimal('7'),
       'is_Bid': True,
       'is_limit': False,
@@ -151,12 +163,14 @@ class TestOrderViews(TestCase):
 
     # CAN NOT CANCEL
     sell_limit_order = self.client.post(reverse('create-order'), {
+      'orderbook': self.ob.id,
       'size': Decimal('10'),
       'is_Bid': False,
       'price': Decimal('10000'),
       'is_limit': True,
     })
     buy_market_order_3 = self.client.post(reverse('create-order'), {
+      'orderbook': self.ob.id,
       'size': Decimal('10'),
       'is_Bid': True,
       'is_limit': False,

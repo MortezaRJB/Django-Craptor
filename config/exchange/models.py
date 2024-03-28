@@ -48,7 +48,13 @@ class SoftDeletionModel(models.Model):
 
 
 class OrderBook(SoftDeletionModel):
-  id  = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True, editable=False, verbose_name='ID')
+  id            = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True, editable=False, verbose_name='ID')
+  currency_1    = models.CharField(max_length=30)
+  currency_2    = models.CharField(max_length=30)
+  is_open       = models.BooleanField(default=True)
+
+  class Meta:
+    models.UniqueConstraint(fields=['currency_1', 'currency_2'], name='unique_pair')
 
 
 class Limit(SoftDeletionModel):
@@ -75,6 +81,7 @@ class Order(SoftDeletionModel):
     CANCELLED_PARTIALLY_FILLED  = 'Cancelled_Partially_Filled'
 
   id            = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True, editable=False, verbose_name='ID')
+  orderbook     = models.ForeignKey(OrderBook, related_name='orders', on_delete=models.CASCADE)
   size          = models.DecimalField(max_digits=settings.DECIMAL_FIELDS_ATTRIBUTES['order_size']['max_digits'], decimal_places=settings.DECIMAL_FIELDS_ATTRIBUTES['order_size']['decimal_places'])
   size_remained = models.DecimalField(max_digits=settings.DECIMAL_FIELDS_ATTRIBUTES['order_size']['max_digits'], decimal_places=settings.DECIMAL_FIELDS_ATTRIBUTES['order_size']['decimal_places'])
   is_Bid        = models.BooleanField()

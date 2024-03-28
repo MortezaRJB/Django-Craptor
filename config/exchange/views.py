@@ -30,3 +30,7 @@ class OrderCancelApiView(DestroyAPIView):
     return Response("The Order Can Not Be Deleted!", status=status.HTTP_400_BAD_REQUEST)
 
 
+class OrderBookListApiView(ListAPIView):
+  queryset = models.OrderBook.objects.filter(is_open=True)
+  serializer_class = serializers.OrderBookSerializer
+
