@@ -31,7 +31,7 @@ def fill_order(existing_order: Order, new_order: Order):
 def fill(limit: Limit, order: Order):
   matches = []
   listof_orders_to_delete = []
-  limit_orders = list(Order.objects.filter(is_limit=True, limit=limit))
+  limit_orders = list(Order.objects.filter(is_limit=True, limit=limit, status__in=[Order.OrderStatusChoices.ACTIVE_NOT_FILLED, Order.OrderStatusChoices.ACTIVE_PARTIALLY_FILLED]))
   for i in range(len(limit_orders)):
     o = limit_orders[i]
     matched = fill_order(o, order)

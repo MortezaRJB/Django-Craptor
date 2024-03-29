@@ -37,6 +37,9 @@ class TestOrderViews(TestCase):
     self.assertEqual(buy_limit_order.status_code, status.HTTP_201_CREATED)
     self.assertEqual(sell_limit_order_1.status_code, status.HTTP_201_CREATED)
     self.assertEqual(sell_limit_order_2.status_code, status.HTTP_201_CREATED)
+    self.assertEqual(buy_limit_order.data.get('status'), models.Order.OrderStatusChoices.ACTIVE_NOT_FILLED)
+    self.assertEqual(sell_limit_order_1.data.get('status'), models.Order.OrderStatusChoices.ACTIVE_NOT_FILLED)
+    self.assertEqual(sell_limit_order_2.data.get('status'), models.Order.OrderStatusChoices.ACTIVE_NOT_FILLED)
     self.assertEqual(len(limits), 2)
     self.assertEqual(limits[1].total_volume, Decimal('10'))
     self.assertEqual(limits[1].price, Decimal('10000'))
@@ -54,6 +57,7 @@ class TestOrderViews(TestCase):
     limits = models.Limit.all_objects.all()
 
     self.assertEqual(sell_limit_order.status_code, status.HTTP_201_CREATED)
+    self.assertEqual(sell_limit_order.data.get('status'), models.Order.OrderStatusChoices.ACTIVE_NOT_FILLED)
     self.assertEqual(len(limits), 1)
     self.assertEqual(limits[0].total_volume, Decimal('10'))
 
@@ -73,6 +77,8 @@ class TestOrderViews(TestCase):
     self.assertEqual(matches[0].ask, sell_order)
     self.assertEqual(matches[0].size_filled, Decimal('7'))
     self.assertEqual(matches[0].price, Decimal('10000'))
+    self.assertEqual(buy_market_order.status, models.Order.OrderStatusChoices.FILLED)
+    self.assertEqual(sell_order.status, models.Order.OrderStatusChoices.ACTIVE_PARTIALLY_FILLED)
   
   def test_multifill_market_order_create_view(self):
     buy_limit_order_1 = self.client.post(reverse('create-order'), {
@@ -103,6 +109,9 @@ class TestOrderViews(TestCase):
     self.assertEqual(buy_limit_order_1.status_code, status.HTTP_201_CREATED)
     self.assertEqual(buy_limit_order_2.status_code, status.HTTP_201_CREATED)
     self.assertEqual(buy_limit_order_3.status_code, status.HTTP_201_CREATED)
+    self.assertEqual(buy_limit_order_1.data.get('status'), models.Order.OrderStatusChoices.ACTIVE_NOT_FILLED)
+    self.assertEqual(buy_limit_order_2.data.get('status'), models.Order.OrderStatusChoices.ACTIVE_NOT_FILLED)
+    self.assertEqual(buy_limit_order_3.data.get('status'), models.Order.OrderStatusChoices.ACTIVE_NOT_FILLED)
     self.assertEqual(len(limits), 3)
     self.assertEqual(limits_total_vol, Decimal('24'))
 
@@ -118,6 +127,7 @@ class TestOrderViews(TestCase):
     for limit in limits: limits_total_vol += limit.total_volume
     matches = models.Match.all_objects.all()
 
+    self.assertEqual(response.data.get('status'), models.Order.OrderStatusChoices.FILLED)
     self.assertEqual(len(limits), 3)
     self.assertEqual(limits_total_vol, Decimal('3.1'))
     self.assertEqual(len(matches), 3)
@@ -139,6 +149,8 @@ class TestOrderViews(TestCase):
 
     self.assertEqual(response_1.status_code, status.HTTP_204_NO_CONTENT)
     self.assertEqual(the_order_1.status, models.Order.OrderStatusChoices.CANCELLED_NOT_FILLED)
+    self.assertEqual(the_order_1.limit.total_volume, Decimal('0'))
+    self.assertNotEqual(the_order_1.limit.deleted_at, None)
 
     # PARTIALLY FILLED LIMIT CANCEL
     sell_limit_order_1 = self.client.post(reverse('create-order'), {
@@ -148,7 +160,7 @@ class TestOrderViews(TestCase):
       'price': Decimal('10000'),
       'is_limit': True,
     })
-    buy_market_order_2 = self.client.post(reverse('create-order'), {
+    buy_market_order_1 = self.client.post(reverse('create-order'), {
       'orderbook': self.ob.id,
       'size': Decimal('7'),
       'is_Bid': True,
@@ -160,28 +172,28 @@ class TestOrderViews(TestCase):
 
     self.assertEqual(response_2.status_code, status.HTTP_204_NO_CONTENT)
     self.assertEqual(the_order_2.status, models.Order.OrderStatusChoices.CANCELLED_PARTIALLY_FILLED)
+    self.assertEqual(the_order_2.limit.total_volume, Decimal('0'))
+    self.assertNotEqual(the_order_2.limit.deleted_at, None)
 
     # CAN NOT CANCEL
-    sell_limit_order = self.client.post(reverse('create-order'), {
+    sell_limit_order_2 = self.client.post(reverse('create-order'), {
       'orderbook': self.ob.id,
       'size': Decimal('10'),
       'is_Bid': False,
       'price': Decimal('10000'),
       'is_limit': True,
     })
-    buy_market_order_3 = self.client.post(reverse('create-order'), {
+    buy_market_order_2 = self.client.post(reverse('create-order'), {
       'orderbook': self.ob.id,
       'size': Decimal('10'),
       'is_Bid': True,
       'is_limit': False,
     })
 
-    response_3 = self.client.delete(reverse('cancel-order', kwargs={'pk': buy_market_order_2.data.get('id')}))
-    the_order_3 = models.Order.objects.get(pk=buy_market_order_2.data.get('id'))
+    response_3 = self.client.delete(reverse('cancel-order', kwargs={'pk': sell_limit_order_2.data.get('id')}))
+    the_order_3 = models.Order.objects.get(pk=sell_limit_order_2.data.get('id'))
 
     self.assertEqual(response_3.status_code, status.HTTP_400_BAD_REQUEST)
     self.assertEqual(the_order_3.status, models.Order.OrderStatusChoices.FILLED)
-
-
 
 

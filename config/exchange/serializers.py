@@ -14,8 +14,8 @@ class OrderSerializer(serializers.ModelSerializer):
 
   class Meta:
     model = models.Order
-    fields = ['id', 'orderbook', 'size', 'is_Bid', 'price', 'is_limit', 'timestamp']
-    read_only_fields = ['timestamp']
+    fields = ['id', 'orderbook', 'size', 'is_Bid', 'price', 'is_limit', 'status', 'timestamp']
+    read_only_fields = ['status', 'timestamp']
   
   def validate(self, attrs):
     if attrs.get('is_limit') and not attrs.get('price'):
@@ -47,8 +47,21 @@ class OrderSerializer(serializers.ModelSerializer):
     return order
 
 
-class OrderBookSerializer(serializers.ModelSerializer):
+class OrderBookListSerializer(serializers.ModelSerializer):
   class Meta:
     model = models.OrderBook
     fields = ['id', 'currency_1', 'currency_2']
 
+
+class LimitSerializer(serializers.ModelSerializer):
+  class Meta:
+    model = models.Limit
+    fields = ['is_bid', 'price', 'total_volume']
+
+
+class OrderBookDetailSerializer(serializers.ModelSerializer):
+  limits = LimitSerializer(many=True, read_only=True)
+  
+  class Meta:
+    model = models.OrderBook
+    fields = ['id', 'currency_1', 'currency_2', 'limits']
