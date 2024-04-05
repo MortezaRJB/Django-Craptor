@@ -4,6 +4,9 @@ from decimal import Decimal
 from django.conf import settings
 from django.utils import timezone
 from django.db.models import QuerySet
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 
 class SoftDeletionQuerySet(QuerySet):
@@ -26,8 +29,12 @@ class SoftDeletionManager(models.Manager):
     super(SoftDeletionManager, self).__init__(*args, **kwargs)
   
   def get_queryset(self) -> models.QuerySet:
-    return super().get_queryset()
+    if self.alive_only:
+      return SoftDeletionQuerySet(self.model).filter(deleted_at=None)
+    return SoftDeletionQuerySet(self.model)
 
+  def hard_delete(self):
+    return self.get_queryset().hard_delete()
 
 
 class SoftDeletionModel(models.Model):
@@ -47,10 +54,18 @@ class SoftDeletionModel(models.Model):
     super(SoftDeletionModel, self).delete()
 
 
+class CryptoCurrencyType(SoftDeletionModel):
+  id      = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True, editable=False, verbose_name='ID')
+  name    = models.CharField(max_length=50, unique=True)
+
+  def __str__(self) -> str:
+    return self.name
+
+
 class OrderBook(SoftDeletionModel):
   id            = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True, editable=False, verbose_name='ID')
-  currency_1    = models.CharField(max_length=30)
-  currency_2    = models.CharField(max_length=30)
+  currency_1    = models.ForeignKey(CryptoCurrencyType, related_name='orderbooks_c1', on_delete=models.CASCADE)
+  currency_2    = models.ForeignKey(CryptoCurrencyType, related_name='orderbooks_c2', on_delete=models.CASCADE)
   is_open       = models.BooleanField(default=True)
 
   class Meta:
@@ -80,16 +95,17 @@ class Order(SoftDeletionModel):
     CANCELLED_NOT_FILLED        = 'Cancelled_Not_Filled'
     CANCELLED_PARTIALLY_FILLED  = 'Cancelled_Partially_Filled'
 
-  id            = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True, editable=False, verbose_name='ID')
-  orderbook     = models.ForeignKey(OrderBook, related_name='orders', on_delete=models.CASCADE)
-  size          = models.DecimalField(max_digits=settings.DECIMAL_FIELDS_ATTRIBUTES['order_size']['max_digits'], decimal_places=settings.DECIMAL_FIELDS_ATTRIBUTES['order_size']['decimal_places'])
-  size_remained = models.DecimalField(max_digits=settings.DECIMAL_FIELDS_ATTRIBUTES['order_size']['max_digits'], decimal_places=settings.DECIMAL_FIELDS_ATTRIBUTES['order_size']['decimal_places'])
-  is_Bid        = models.BooleanField()
-  price         = models.DecimalField(null=True, blank=True, max_digits=settings.DECIMAL_FIELDS_ATTRIBUTES['order_price']['max_digits'], decimal_places=settings.DECIMAL_FIELDS_ATTRIBUTES['order_price']['decimal_places'])
-  is_limit      = models.BooleanField()
-  limit         = models.ForeignKey(Limit, default=None, related_name='orders', null=True, blank=True, on_delete=models.SET_NULL)
-  status        = models.CharField(max_length=50, choices=OrderStatusChoices.choices)
-  timestamp     = models.DateTimeField(auto_now_add=True)
+  id              = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True, editable=False, verbose_name='ID')
+  user            = models.ForeignKey(User, related_name='orders', on_delete=models.DO_NOTHING)
+  orderbook       = models.ForeignKey(OrderBook, related_name='orders', on_delete=models.CASCADE)
+  size            = models.DecimalField(max_digits=settings.DECIMAL_FIELDS_ATTRIBUTES['order_size']['max_digits'], decimal_places=settings.DECIMAL_FIELDS_ATTRIBUTES['order_size']['decimal_places'])
+  size_remained   = models.DecimalField(max_digits=settings.DECIMAL_FIELDS_ATTRIBUTES['order_size']['max_digits'], decimal_places=settings.DECIMAL_FIELDS_ATTRIBUTES['order_size']['decimal_places'])
+  is_Bid          = models.BooleanField()
+  price           = models.DecimalField(null=True, blank=True, max_digits=settings.DECIMAL_FIELDS_ATTRIBUTES['order_price']['max_digits'], decimal_places=settings.DECIMAL_FIELDS_ATTRIBUTES['order_price']['decimal_places'])
+  is_limit        = models.BooleanField()
+  limit           = models.ForeignKey(Limit, default=None, related_name='orders', null=True, blank=True, on_delete=models.SET_NULL)
+  status          = models.CharField(max_length=50, choices=OrderStatusChoices.choices)
+  timestamp       = models.DateTimeField(auto_now_add=True)
 
   @property
   def is_filled(self):
@@ -102,4 +118,33 @@ class Match(SoftDeletionModel):
   ask             = models.ForeignKey(Order, related_name='ask_matches', on_delete=models.CASCADE)
   size_filled     = models.DecimalField(max_digits=settings.DECIMAL_FIELDS_ATTRIBUTES['match_size_filled']['max_digits'], decimal_places=settings.DECIMAL_FIELDS_ATTRIBUTES['match_size_filled']['decimal_places'])
   price           = models.DecimalField(max_digits=settings.DECIMAL_FIELDS_ATTRIBUTES['match_price']['max_digits'], decimal_places=settings.DECIMAL_FIELDS_ATTRIBUTES['match_price']['decimal_places'])
+
+
+class ETHAccounts(SoftDeletionModel):
+  id              = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True, editable=False, verbose_name='ID')
+  user            = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+  public_key      = models.CharField(max_length=100, unique=True)
+  # is_taken        = models.BooleanField(default=False)
+
+
+class UserExternalTransaction(SoftDeletionModel):
+  id                  = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True, editable=False, verbose_name='ID')
+  user                = models.ForeignKey(User, related_name='transactions', on_delete=models.DO_NOTHING)
+  currency            = models.ForeignKey(CryptoCurrencyType, on_delete=models.DO_NOTHING)
+  # match_transaction   = models.ForeignKey(Match, related_name='transaction', null=True, on_delete=models.DO_NOTHING)
+  is_deposit          = models.BooleanField()
+  amount              = models.DecimalField(max_digits=settings.DECIMAL_FIELDS_ATTRIBUTES['transaction_price']['max_digits'], decimal_places=settings.DECIMAL_FIELDS_ATTRIBUTES['transaction_price']['decimal_places'])
+  from_address        = models.ForeignKey(ETHAccounts, null=True, related_name='sent_transactions', on_delete=models.DO_NOTHING)
+  to_address          = models.ForeignKey(ETHAccounts, null=True, related_name='recieved_transactions', on_delete=models.DO_NOTHING)
+  timestamp           = models.DateTimeField(auto_now_add=True)
+
+
+class InternalTransaction(models.Model):
+  id                  = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True, editable=False, verbose_name='ID')
+  from_user           = models.ForeignKey(User, related_name='transactions_from', on_delete=models.DO_NOTHING)
+  to_user             = models.ForeignKey(User, related_name='transactions_to', on_delete=models.DO_NOTHING)
+  currency            = models.ForeignKey(CryptoCurrencyType, on_delete=models.DO_NOTHING)
+  match_transaction   = models.ForeignKey(Match, related_name='transaction', null=True, on_delete=models.DO_NOTHING)
+  amount              = models.DecimalField(max_digits=settings.DECIMAL_FIELDS_ATTRIBUTES['transaction_price']['max_digits'], decimal_places=settings.DECIMAL_FIELDS_ATTRIBUTES['transaction_price']['decimal_places'])
+  timestamp           = models.DateTimeField(auto_now_add=True)
 

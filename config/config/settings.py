@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -39,9 +40,12 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
+    'rest_framework.authtoken',
+    'dj_rest_auth',
     'corsheaders',
 
     'exchange',
+    'accounts',
 ]
 
 MIDDLEWARE = [
@@ -133,6 +137,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # My Settings #
 # ########### #
 
+AUTH_USER_MODEL = 'accounts.User'
+
 DECIMAL_FIELDS_ATTRIBUTES = {
   'limit_price': {'max_digits': 7, 'decimal_places': 2},
   'limit_total_volume': {'max_digits': 17, 'decimal_places': 4},
@@ -140,4 +146,30 @@ DECIMAL_FIELDS_ATTRIBUTES = {
   'order_size': {'max_digits': 7, 'decimal_places': 4},
   'match_price': {'max_digits': 7, 'decimal_places': 2},
   'match_size_filled': {'max_digits': 7, 'decimal_places': 4},
+  'transaction_price': {'max_digits': 9, 'decimal_places': 4},
 }
+
+AUTHENTICATION_BACKENDS = ('accounts.backends.CaseInsensitiveModelBackend',)
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+}
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        # 'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'dj_rest_auth.jwt_auth.JWTCookieAuthentication',
+    ),
+    # 'DEFAULT_THROTTLE_RATES': {
+    #     "authentication": "4/hour",
+    #     "verify_authentication": "8/hour",
+    # },
+}
+
+REST_AUTH = {
+    'USE_JWT': True,
+    'JWT_AUTH_COOKIE': 'access',
+    'JWT_AUTH_REFRESH_COOKIE': 'refresh',
+    'JWT_AUTH_HTTPONLY': False,
+}
+

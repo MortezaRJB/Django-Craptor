@@ -4,7 +4,10 @@ from django.db.models import UUIDField
 from . import models
 from . import services
 from django.shortcuts import get_object_or_404
+from django.conf import settings
+from rest_framework.fields import CurrentUserDefault
 from django.utils.translation import gettext_lazy as _
+from decimal import Decimal
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -29,7 +32,14 @@ class OrderSerializer(serializers.ModelSerializer):
     orderbook = validated_data.get('orderbook', None)
     if orderbook is None:
       raise serializers.ValidationError({"orderbook": _("Orderbook is required!")})
+    user = self.context['request'].user
+    if validated_data.get('is_limit'):
+      order_total_cost = validated_data.get('size')*validated_data.get('price')
+      if (validated_data.get('is_Bid') and services.user_balance(user, orderbook.currency_2) < order_total_cost) or\
+      not validated_data.get('is_Bid') and services.user_balance(user, orderbook.currency_1) < validated_data.get('size'):
+        raise serializers.ValidationError({"Balance": _("Account balance is insufficient!")})
     order = models.Order.objects.create(
+      user=user,
       orderbook=orderbook,
       size=validated_data.get('size'),
       is_Bid=validated_data.get('is_Bid'),
@@ -48,6 +58,9 @@ class OrderSerializer(serializers.ModelSerializer):
 
 
 class OrderBookListSerializer(serializers.ModelSerializer):
+  currency_1 = serializers.StringRelatedField()
+  currency_2 = serializers.StringRelatedField()
+
   class Meta:
     model = models.OrderBook
     fields = ['id', 'currency_1', 'currency_2']
@@ -60,8 +73,15 @@ class LimitSerializer(serializers.ModelSerializer):
 
 
 class OrderBookDetailSerializer(serializers.ModelSerializer):
+  currency_1 = serializers.StringRelatedField()
+  currency_2 = serializers.StringRelatedField()
   limits = LimitSerializer(many=True, read_only=True)
   
   class Meta:
     model = models.OrderBook
     fields = ['id', 'currency_1', 'currency_2', 'limits']
+
+
+class UserDepositFiatSerializer(serializers.Serializer):
+  amount = serializers.DecimalField(max_digits=settings.DECIMAL_FIELDS_ATTRIBUTES['transaction_price']['max_digits'], decimal_places=settings.DECIMAL_FIELDS_ATTRIBUTES['transaction_price']['decimal_places'], min_value=Decimal('0.01'))
+
