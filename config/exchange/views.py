@@ -25,7 +25,7 @@ class OrderCancelApiView(DestroyAPIView):
       limit = order.limit
       limit.total_volume -= order.size_remained
       if limit.total_volume == 0:
-        limit.delete()
+        limit.hard_delete()
       else:
         limit.save()
       order.save()
@@ -35,7 +35,7 @@ class OrderCancelApiView(DestroyAPIView):
       limit = order.limit
       limit.total_volume -= order.size_remained
       if limit.total_volume == 0:
-        limit.delete()
+        limit.hard_delete()
       else:
         limit.save()
       order.save()

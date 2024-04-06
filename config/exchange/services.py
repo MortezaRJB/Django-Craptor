@@ -174,7 +174,7 @@ def place_order(order: Order, orderbook: OrderBook):
       handle_matches_transaction(orderbook, order, matches)
       # TODO: fix bulk delete
       for l in limits_to_delete:
-        l.delete()
+        l.hard_delete()
       return HttpResponse(status.HTTP_200_OK, 'The Market Order Was Placed Successfully.')
 
 

@@ -134,7 +134,6 @@ class UserExternalTransaction(SoftDeletionModel):
   id                  = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True, editable=False, verbose_name='ID')
   user                = models.ForeignKey(User, related_name='transactions', on_delete=models.DO_NOTHING)
   currency            = models.ForeignKey(CryptoCurrencyType, on_delete=models.DO_NOTHING)
-  # match_transaction   = models.ForeignKey(Match, related_name='transaction', null=True, on_delete=models.DO_NOTHING)
   is_deposit          = models.BooleanField()
   amount              = models.DecimalField(max_digits=settings.DECIMAL_FIELDS_ATTRIBUTES['transaction_price']['max_digits'], decimal_places=settings.DECIMAL_FIELDS_ATTRIBUTES['transaction_price']['decimal_places'])
   from_address        = models.ForeignKey(ETHAccounts, null=True, related_name='sent_transactions', on_delete=models.DO_NOTHING)
