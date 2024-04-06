@@ -7,6 +7,6 @@ Capabilities:
 - adding $usd to user account balance for trade purposes
 - users can see their account balance for each currency
 - users can place Limit & Market orders
-- trades are saved in DB as transactions
+- trades are registered in DB as transactions
 - users can cancel their active orders
-- ... STILL WORKING ON FURTHER PARTS & FEATURES
+- . . . STILL WORKING ON FURTHER PARTS & FEATURES
