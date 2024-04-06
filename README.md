@@ -1,4 +1,5 @@
 Backend Api for crypto currency exchange
+
 Capabilities:
 - users can signup and login to their account
 - authorization based on JWT tokens
