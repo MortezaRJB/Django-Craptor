@@ -110,6 +110,9 @@ class Order(SoftDeletionModel):
   @property
   def is_filled(self):
     return self.size_remained == 0
+  
+  def worth(self):
+    return self.size_remained*self.price
 
 
 class Match(SoftDeletionModel):

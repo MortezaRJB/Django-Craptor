@@ -38,6 +38,9 @@ class OrderSerializer(serializers.ModelSerializer):
       if (validated_data.get('is_Bid') and services.user_balance(user, orderbook.currency_2) < order_total_cost) or\
       not validated_data.get('is_Bid') and services.user_balance(user, orderbook.currency_1) < validated_data.get('size'):
         raise serializers.ValidationError({"Balance": _("Account balance is insufficient!")})
+    else: #>> order is market
+      if services.user_balance(user, orderbook.currency_2) < validated_data.get('size'):
+        raise serializers.ValidationError({"Balance": [_("Account balance is insufficient!")]})
     order = models.Order.objects.create(
       user=user,
       orderbook=orderbook,
